@@ -3,8 +3,7 @@
 set -o nounset
 set -o errexit
 
-CD="$(dirname $(readlink -f ${0}))"
-pushd "${CD}" > /dev/null
+pushd "$(dirname $(readlink -f ${0}))" > /dev/null
 BIN=${PWD}/bin
 mkdir -p ${BIN}/{tmp,lib} || :
 
@@ -54,7 +53,7 @@ function build
 
 function run
 {
-  ${BIN}/nginx -g "daemon off;" -c ${CD}/nginx.conf $*
+  ${BIN}/nginx -g "daemon off;" -c ${PWD}/nginx.conf $*
 }
 
 function hup

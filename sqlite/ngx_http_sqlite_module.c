@@ -3,13 +3,6 @@
 #include <ngx_http.h>
 #include <sqlite3.h>
 
-// static ngx_str_t  ngx_http_image_types[] = {
-//     ngx_string("image/jpeg"),
-//     ngx_string("image/gif"),
-//     ngx_string("image/png"),
-//     ngx_string("image/webp")
-// };
-
 typedef struct ngx_http_sqlite_ctx
 {
     ngx_http_request_t *r;
@@ -233,7 +226,7 @@ ngx_http_sqlite_init_process(ngx_cycle_t *cycle)
     if (rc != SQLITE_OK)
     {
         ngx_log_error(NGX_LOG_ERR, cycle->log, 0, "sqlite: [PID=%d] %s", ngx_pid, sqlite3_errmsg(main_conf->db));
-        sqlite3_close_v2(main_conf->db); // even on error resources are released by close
+        sqlite3_close_v2(main_conf->db); // even on error resources can be released by sqlite3_close_v2()
         return NGX_ERROR;
     }
 
@@ -376,7 +369,7 @@ ngx_http_sqlite_request_data_handler(ngx_http_request_t *r)
         // to instead finalize later, something needs to trigger a callback
     }
     else
-    {   // un-pause readfunction since more data is available now
+    {   // chunked input?
         ngx_log_error(NGX_LOG_INFO, sqlite_request->r->connection->log, 0, "sqlite: [PID=%d] chunk", ngx_pid);
     }
 }
@@ -458,7 +451,7 @@ execute_request(ngx_http_sqlite_ctx_t *sqlite_request)
         while ((rc = sqlite3_step(statement)) == SQLITE_ROW)
         {
             ngx_log_error(NGX_LOG_INFO, sqlite_request->r->connection->log, 0, "sqlite: [PID=%d] sqlite3_step == SQLITE_ROW", ngx_pid);
-            // The leftmost column of the result set has the index 0.
+            // the leftmost column of the result set has the index 0.
             for (int index = 0; index < column_count; index += 1)
             {
                 // pointer is valid until sqlite3_step() or sqlite3_reset() or sqlite3_finalize() is called.

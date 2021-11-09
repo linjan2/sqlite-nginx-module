@@ -458,6 +458,7 @@ execute_request(ngx_http_sqlite_ctx_t *sqlite_request)
                 const unsigned char *field_value = sqlite3_column_text(statement, index);
                 // sqlite3_column_type(statement, i) != SQLITE_NULL
                 // char *column_name = (char *)sqlite3_column_name(statement, i);
+                int field_length = 0;
                 if (field_value == NULL)
                 {   // if NULL, check if value is NULL or if there was an error
                     if (sqlite3_errcode(main_conf->db) != SQLITE_OK)
@@ -467,15 +468,19 @@ execute_request(ngx_http_sqlite_ctx_t *sqlite_request)
                         return NGX_ERROR;
                     }
                     field_value = (const unsigned char*)"NULL"; // NULL value
+                    field_length = sizeof "NULL"-1;
+                }
+                else
+                {
+                    field_length = sqlite3_column_bytes(statement, index);
                 }
                 ngx_log_error(NGX_LOG_INFO, sqlite_request->r->connection->log, 0, "sqlite: [PID=%d] field_value = '%s'", ngx_pid, field_value);
-                int len = sqlite3_column_bytes(statement, index);
-                len += 1; // +1 byte for separator (, or \n)
-                if (buf->last + len >= buf->end)
+                field_length += 1; // +1 byte for separator (, or \n)
+                if (buf->last + field_length >= buf->end)
                 {   // create and chain another buffer if previous can't fit the data
-                    if (len > buffer_capacity)
+                    if (field_length > buffer_capacity)
                     {
-                        buffer_capacity = len;
+                        buffer_capacity = field_length;
                     }
                     buf = ngx_create_temp_buf(sqlite_request->r->pool, buffer_capacity);
                     buf->memory = 1;
@@ -492,7 +497,7 @@ execute_request(ngx_http_sqlite_ctx_t *sqlite_request)
                         sqlite_request->output_end = chain;
                     }
                 }
-                buf->last = ngx_cpymem(buf->last, field_value, len-1);
+                buf->last = ngx_cpymem(buf->last, field_value, field_length-1);
                 *buf->last++ = index == column_count-1 ? '\n' : ','; // comma between values, newline between records
             }
         }
